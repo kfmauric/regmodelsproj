@@ -1,0 +1,101 @@
+---
+title: "Regression models Project"
+author: "Kyle Maurice"
+date: "December 23, 2015"
+output: pdf_document
+---
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(gridExtra)
+```
+
+As highlighted in the table below, the types of cars represented in the data set range from american muscle and luxury cars to exotic sports cars to small economy cars. As a starting point in building the model to isolate the effect of transmission type, weight, quarter mile time, horsepower and displacement will be considered.
+
+```{r}
+mtcars
+```
+
+A few exploratory plots will be created to examine the relationships between the parameters of the data set. 
+
+```{r, echo=FALSE}
+data(mtcars)
+M<-cor(mtcars)
+corrplot(M, method="number")
+mtcars$am <- factor(mtcars$am, levels = c(0,1), labels=c("Automatic", "Manual"))
+p1<-ggplot(mtcars, aes(wt, mpg))+geom_point(aes(color=am))
+p2<-ggplot(mtcars, aes(disp, mpg))+geom_point(aes(color=am))
+p3<-ggplot(mtcars, aes(drat, mpg))+geom_point(aes(color=am))
+p4<-ggplot(mtcars, aes(hp, mpg))+geom_point(aes(color=am))
+grid.arrange(p1,p2,p3,p4, ncol=2)
+```
+
+From the plots we can see a strong negative influence of displacement, cylinders, weight and horsepower. There is a weak to moderate positive influence of gears, am, qsec and vs on mpg. It is important to note that the plot of MPG with respect to weight, displacement and horsepower all look asymptotic at that approach the origin. The relationship looks like 1/x and a transformation might be helpful in removing the non linearity.  As shown in the figure below, the relationships in the data are more linear when MPG is transgormed to GPM (i.e. GPM = 1/MPG).
+
+```{r}
+mtcars$gpm <- 1/mtcars$mpg
+p1<-ggplot(mtcars, aes(wt, gpm))+geom_point(aes(color=am))
+p2<-ggplot(mtcars, aes(disp, gpm))+geom_point(aes(color=am))
+p3<-ggplot(mtcars, aes(drat, gpm))+geom_point(aes(color=am))
+p4<-ggplot(mtcars, aes(hp, gpm))+geom_point(aes(color=am))
+grid.arrange(p1,p2,p3,p4, ncol=2)
+```
+
+
+The model should probably include all of these factors since it is not clear that they do not have an influence on the output variable that must be removed in order to examine the influence of am on mpg. The starting point will be a model with For this reason a model with all the parameters will be built and statistically insignificant factor in the models will be removed until the model is as simple as possible.  
+
+```{r}
+fit1 <- lm(I(gpm*100)~.-mpg, data = mtcars )
+summary(fit1)
+```
+
+ 
+```{r}
+fit2 <- update(fit1,.~. -drat)
+summary(fit2)
+```
+
+```{r}
+fit3 <- update(fit2,.~. -vs)
+summary(fit3)
+```
+
+Notice we would get rid of transmission type here if we were not intested in the effect of transission type.
+```{r}
+fit4 <- update(fit3,.~. -qsec)
+summary(fit4)
+```
+
+```{r}
+fit5 <- update(fit4,.~. -cyl)
+summary(fit5)
+```
+
+```{r}
+fit6 <- update(fit5,.~. -hp)
+summary(fit6)
+```
+
+```{r}
+fit7 <- update(fit6,.~. -gear)
+summary(fit7)
+```
+
+
+```{r}
+fit8 <- update(fit7,.~. -carb)
+summary(fit8)
+```
+
+
+```{r}
+fit9 <- update(fit8,.~. -carb)
+summary(fit9)
+```
+
+```{r}
+anova(fit1,fit2,fit3,fit4,fit5,fit6,fit7,fit8)
+```
