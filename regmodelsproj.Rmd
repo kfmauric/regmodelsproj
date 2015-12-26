@@ -1,39 +1,40 @@
 ---
-title: "Regression models Project"
+title: "Regression Models Project"
 author: "Kyle Maurice"
 date: "December 23, 2015"
 output: pdf_document
 ---
+###Executive Summary  
+In an analysis of varied population of cars from the mtcars dataset in R, it was found that there was no significant statistical difference between the manual and automatic transmission with respect to MPG. In the analysis GPM, a transformation of MPG, was used as a proxy for MPG to avoid non-linearity in the data. 
 
-
-```{r}
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(corrplot)
 library(gridExtra)
 ```
 
-As highlighted in the table below, the types of cars represented in the data set range from american muscle and luxury cars to exotic sports cars to small economy cars. As a starting point in building the model to isolate the effect of transmission type, weight, quarter mile time, horsepower and displacement will be considered.
+###Introduction  
+Starting from the mtcars dataset in R, an anlysis will be done to quamtify the difference between manual and automatic transimission on an population fo cars. The types of cars represented in the data set range from american muscle and luxury cars to exotic sports cars to small economy cars. As a starting point in the anaylsis, a few exploratory plots will be created to examine the relationships between the parameters of the data set.
 
-```{r}
+```{r, echo=FALSE, results='hide'}
 mtcars
 ```
 
-A few exploratory plots will be created to examine the relationships between the parameters of the data set. 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.height=4}
 data(mtcars)
 M<-cor(mtcars)
 corrplot(M, method="number")
-mtcars$am <- factor(mtcars$am, levels = c(0,1), labels=c("Automatic", "Manual"))
+mtcars$am <- factor(mtcars$am, levels = c(0,1), labels=c("Auto", "Man"))
 p1<-ggplot(mtcars, aes(wt, mpg))+geom_point(aes(color=am))
 p2<-ggplot(mtcars, aes(disp, mpg))+geom_point(aes(color=am))
 p3<-ggplot(mtcars, aes(drat, mpg))+geom_point(aes(color=am))
 p4<-ggplot(mtcars, aes(hp, mpg))+geom_point(aes(color=am))
-grid.arrange(p1,p2,p3,p4, ncol=2)
+grid.arrange(p1,p2,p3,p4, ncol=3)
 ```
 
-From the plots we can see a strong negative influence of displacement, cylinders, weight and horsepower. There is a weak to moderate positive influence of gears, am, qsec and vs on mpg. It is important to note that the plot of MPG with respect to weight, displacement and horsepower all look asymptotic at that approach the origin. The relationship looks like 1/x and a transformation might be helpful in removing the non linearity.  As shown in the figure below, the relationships in the data are more linear when MPG is transgormed to GPM (i.e. GPM = 1/MPG). The inputs representing the number of cylenders, horsepower and displaemtn are all correlated with each other. This follows from knowledge of cars. only one of those parameters should be necessary for the model. Clearly weight should be part of the model but the selection of other parameters for the model is more difficult.  
+From the plots we can see a strong negative influence of displacement, cylinders, weight and horsepower. There is a weak to moderate positive influence of gears, am, qsec and vs on mpg. It is important to note that the plot of MPG with respect to weight, displacement and horsepower all look asymptotic at that approach the origin. The relationship looks like 1/x and a transformation might be helpful in removing the non linearity.  As shown in the figure below, the relationships in the data are more linear when MPG is transformed to GPM (i.e. GPM = 1/MPG). The inputs representing the number of cylinders, horsepower and misplacement are all correlated with each other. This follows from knowledge of cars. only one of those parameters should be necessary for the model. Clearly weight should be part of the model but the selection of other parameters for the model is more difficult.  
 
 ```{r}
 mtcars$gpm <- 1/mtcars$mpg
@@ -43,79 +44,41 @@ p3<-ggplot(mtcars, aes(drat, gpm))+geom_point(aes(color=am))
 p4<-ggplot(mtcars, aes(hp, gpm))+geom_point(aes(color=am))
 grid.arrange(p1,p2,p3,p4, ncol=2)
 ```
+###Analysis  
 
-
-The model should start from the variable in question and add paameters until the model in accutre enough to provide some inference about the question of the impact of transmission type cxan be ansewred. The model of the transformed and scaled variable will be built to remove the nolineatiry in the MPG measuremtns. 
+The model should start from the variable in question and add parameters until the model in accurate enough to provide some inference about the question of the impact of transmission type can be answered. The model of the transformed and scaled variable will be built to remove the nolineatiry in the MPG measurements. 
 
 ```{r}
 fit1 <- lm(I(gpm*100)~am, data = mtcars )
 summary(fit1)
 ```
-R squared for the model is insufficiant for an accurate model. More parameters must be added. YThe first candidtate for additial parameters is weight, since the exploratory plots show a strong correlation with gpm. 
+R squared for the model is insufficient for an accurate model. More parameters must be added. The first candidate for additional parameters is weight, since the exploratory plots show a strong correlation with GPM. 
 
 ```{r}
 fit3 <- lm(I(gpm*100)~am+wt, data = mtcars )
 summary(fit3)
 ```
-Adding weight has removed significaant error from the model. Searching in the residual plot for the nextp parameter to add. There is a slight pattern with qsec, Another approach to try would be to fit the model throught the origin since with 0 weight we would expect to expend 0 GMP.
-
+Adding weight has removed significant error from the model. Searching in the residual plot for the next parameter to add. The residual plots below show that there is a slight upward trend in residuals for quarter mile time, displacement, horsepower, and number of cylinders. Since qsec has the smallest correlation to wt, that parameter will be added next.
 ```{r}
 plot(predict(fit3),resid(fit3))
 plot(mtcars$mpg,predict(fit3))
 mtcars$resid3<-resid(fit3)
 mtcars$predict3 <-predict(fit3)
-p1<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=qsec), size=3)+geom_smooth((method="lm"))
-p2<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=hp), size=3)+geom_smooth((method="lm"))
-p3<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=disp), size=3)+geom_smooth((method="lm"))
-p4<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=cyl), size=3)+geom_smooth((method="lm"))
+p1<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=qsec), size=3)
+p2<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=hp), size=3)
+p3<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=disp), size=3)
+p4<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=cyl), size=3)
 grid.arrange(p1,p2,p3,p4, ncol=2)
-pqsec<-(mean(mtcars$qsec[mtcars$resid3<0])-mean(mtcars$qsec[mtcars$resid3>0]))/(mean(mtcars$qsec[mtcars$resid3<0])+mean(mtcars$qsec[mtcars$resid3>0]))
-php<-(mean(mtcars$hp[mtcars$resid3<0])-mean(mtcars$hp[mtcars$resid3>0]))/(mean(mtcars$hp[mtcars$resid3<0])+mean(mtcars$hp[mtcars$resid3>0]))
-pdisp<-(mean(mtcars$disp[mtcars$resid3<0])-mean(mtcars$disp[mtcars$resid3>0]))/(mean(mtcars$disp[mtcars$resid3<0])+mean(mtcars$disp[mtcars$resid3>0]))
-pcyl<-(mean(mtcars$cyl[mtcars$resid3<0])-mean(mtcars$cyl[mtcars$resid3>0]))/(mean(mtcars$cyl[mtcars$resid3<0])+mean(mtcars$cyl[mtcars$resid3>0]))
-```
-This greatly improves the model. Residual will be examined to get a clue as to the next parameter to add. The residual plot seems to show a pattern with hp, the valuse below zero are smaller that the residual values above zero. Ideally thay would sum to zero. Hp is correlated to wt so a new measure shuuld be formed that includes hp but does not depend on weight. Perhaps hp divided by weight.
-```{r}
-mtcars$hp_meas<-mtcars$hp/mtcars$wt
-mtcars2<-mtcars
-mtcars2$am<-NULL
-Mmeas<-cor(mtcars2)
-corrplot(Mmeas)
-
 ```
 
+
 ```{r}
-fit4 <- lm(I(gpm*100)~am+wt+hp, data = mtcars )
+fit4 <- lm(I(gpm*100)~am+wt+qsec, data = mtcars )
 summary(fit4)
+a<-qplot(predict(fit4),resid(fit4))+geom_smooth(method="lm")
+#plot(fit4)
 ```
 
-```{r}
-fit5 <- lm(I(gpm*100)~am+wt+I(hp/wt), data = mtcars )
-summary(fit5)
-```
-
-```{r}
-fit6 <- lm(I(gpm*100)~am+wt+qsec, data = mtcars )
-summary(fit6)
-```
-
-```{r}
-fit7 <- update(fit6,.~. -gear)
-summary(fit7)
-```
+The residuals look random and the models appears to be healthy. From the coefficients we can perform hypothesis test on the difference between the Automatic and Manual transmission types. The measure of the difference between the value of the coefficient in the regression model are not statistically different from one another. A hypothesis test for for the difference between the transmission types will return the null hypothesis.
 
 
-```{r}
-fit8 <- update(fit7,.~. -carb)
-summary(fit8)
-```
-
-
-```{r}
-fit9 <- update(fit8,.~. -carb)
-summary(fit9)
-```
-
-```{r}
-anova(fit1,fit2,fit3,fit4,fit5,fit6,fit7,fit8)
-```
