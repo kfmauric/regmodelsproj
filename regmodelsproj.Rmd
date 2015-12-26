@@ -33,7 +33,7 @@ p4<-ggplot(mtcars, aes(hp, mpg))+geom_point(aes(color=am))
 grid.arrange(p1,p2,p3,p4, ncol=2)
 ```
 
-From the plots we can see a strong negative influence of displacement, cylinders, weight and horsepower. There is a weak to moderate positive influence of gears, am, qsec and vs on mpg. It is important to note that the plot of MPG with respect to weight, displacement and horsepower all look asymptotic at that approach the origin. The relationship looks like 1/x and a transformation might be helpful in removing the non linearity.  As shown in the figure below, the relationships in the data are more linear when MPG is transgormed to GPM (i.e. GPM = 1/MPG).
+From the plots we can see a strong negative influence of displacement, cylinders, weight and horsepower. There is a weak to moderate positive influence of gears, am, qsec and vs on mpg. It is important to note that the plot of MPG with respect to weight, displacement and horsepower all look asymptotic at that approach the origin. The relationship looks like 1/x and a transformation might be helpful in removing the non linearity.  As shown in the figure below, the relationships in the data are more linear when MPG is transgormed to GPM (i.e. GPM = 1/MPG). The inputs representing the number of cylenders, horsepower and displaemtn are all correlated with each other. This follows from knowledge of cars. only one of those parameters should be necessary for the model. Clearly weight should be part of the model but the selection of other parameters for the model is more difficult.  
 
 ```{r}
 mtcars$gpm <- 1/mtcars$mpg
@@ -45,37 +45,57 @@ grid.arrange(p1,p2,p3,p4, ncol=2)
 ```
 
 
-The model should probably include all of these factors since it is not clear that they do not have an influence on the output variable that must be removed in order to examine the influence of am on mpg. The starting point will be a model with For this reason a model with all the parameters will be built and statistically insignificant factor in the models will be removed until the model is as simple as possible.  
+The model should start from the variable in question and add paameters until the model in accutre enough to provide some inference about the question of the impact of transmission type cxan be ansewred. The model of the transformed and scaled variable will be built to remove the nolineatiry in the MPG measuremtns. 
 
 ```{r}
-fit1 <- lm(I(gpm*100)~.-mpg, data = mtcars )
+fit1 <- lm(I(gpm*100)~am, data = mtcars )
 summary(fit1)
 ```
-
- 
-```{r}
-fit2 <- update(fit1,.~. -drat)
-summary(fit2)
-```
+R squared for the model is insufficiant for an accurate model. More parameters must be added. YThe first candidtate for additial parameters is weight, since the exploratory plots show a strong correlation with gpm. 
 
 ```{r}
-fit3 <- update(fit2,.~. -vs)
+fit3 <- lm(I(gpm*100)~am+wt, data = mtcars )
 summary(fit3)
 ```
+Adding weight has removed significaant error from the model. Searching in the residual plot for the nextp parameter to add. There is a slight pattern with qsec, Another approach to try would be to fit the model throught the origin since with 0 weight we would expect to expend 0 GMP.
 
-Notice we would get rid of transmission type here if we were not intested in the effect of transission type.
 ```{r}
-fit4 <- update(fit3,.~. -qsec)
+plot(predict(fit3),resid(fit3))
+plot(mtcars$mpg,predict(fit3))
+mtcars$resid3<-resid(fit3)
+mtcars$predict3 <-predict(fit3)
+p1<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=qsec), size=3)+geom_smooth((method="lm"))
+p2<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=hp), size=3)+geom_smooth((method="lm"))
+p3<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=disp), size=3)+geom_smooth((method="lm"))
+p4<-ggplot(mtcars, aes(predict3,resid3))+geom_point(aes(color=cyl), size=3)+geom_smooth((method="lm"))
+grid.arrange(p1,p2,p3,p4, ncol=2)
+pqsec<-(mean(mtcars$qsec[mtcars$resid3<0])-mean(mtcars$qsec[mtcars$resid3>0]))/(mean(mtcars$qsec[mtcars$resid3<0])+mean(mtcars$qsec[mtcars$resid3>0]))
+php<-(mean(mtcars$hp[mtcars$resid3<0])-mean(mtcars$hp[mtcars$resid3>0]))/(mean(mtcars$hp[mtcars$resid3<0])+mean(mtcars$hp[mtcars$resid3>0]))
+pdisp<-(mean(mtcars$disp[mtcars$resid3<0])-mean(mtcars$disp[mtcars$resid3>0]))/(mean(mtcars$disp[mtcars$resid3<0])+mean(mtcars$disp[mtcars$resid3>0]))
+pcyl<-(mean(mtcars$cyl[mtcars$resid3<0])-mean(mtcars$cyl[mtcars$resid3>0]))/(mean(mtcars$cyl[mtcars$resid3<0])+mean(mtcars$cyl[mtcars$resid3>0]))
+```
+This greatly improves the model. Residual will be examined to get a clue as to the next parameter to add. The residual plot seems to show a pattern with hp, the valuse below zero are smaller that the residual values above zero. Ideally thay would sum to zero. Hp is correlated to wt so a new measure shuuld be formed that includes hp but does not depend on weight. Perhaps hp divided by weight.
+```{r}
+mtcars$hp_meas<-mtcars$hp/mtcars$wt
+mtcars2<-mtcars
+mtcars2$am<-NULL
+Mmeas<-cor(mtcars2)
+corrplot(Mmeas)
+
+```
+
+```{r}
+fit4 <- lm(I(gpm*100)~am+wt+hp, data = mtcars )
 summary(fit4)
 ```
 
 ```{r}
-fit5 <- update(fit4,.~. -cyl)
+fit5 <- lm(I(gpm*100)~am+wt+I(hp/wt), data = mtcars )
 summary(fit5)
 ```
 
 ```{r}
-fit6 <- update(fit5,.~. -hp)
+fit6 <- lm(I(gpm*100)~am+wt+qsec, data = mtcars )
 summary(fit6)
 ```
 
